@@ -2,6 +2,7 @@ import asyncio
 from typing import Dict
 from gym_lib import Gym
 import os
+import sys
 import gym
 import gym_lib
 import random
@@ -12,7 +13,7 @@ import torch as th
 import torch.nn as nn
 import argparse
 
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, A2C
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
 
@@ -26,11 +27,22 @@ class CustomCNN(BaseFeaturesExtractor):
     """
     def __init__(self, observation_space: gym.spaces.Box, features_dim: int = 32):
     
+        cnn_opt = 3
+
+        if os.path.exists("info.txt"):
+            with open("info.txt", "r") as f:
+                holder = f.read().split("\n")
+                cnn_opt = int(holder[0])
+
+        if cnn_opt > 2:
+            features_dim = 64
+
+        print(f"cnn_opt: {cnn_opt}--------------features_dim: {features_dim}")
+
         super(CustomCNN, self).__init__(observation_space, features_dim)
         # We assume CxHxW images (channels first)
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
-        print(n_input_channels)
         #OUTPUT = ((INPUT - KERNEL + 2*PADDING) / STRIDE) + 1
         #OUTPUT = ((15-3+2*1)/1)+1
         #OUTPUT = 15
@@ -76,7 +88,7 @@ class CustomCNN(BaseFeaturesExtractor):
             nn.Flatten()),
         }
 
-        self.cnn = self.nn_options[4]
+        self.cnn = self.nn_options[cnn_opt]
         # Compute shape by doing one forward pass
         with th.no_grad():
             n_flatten = self.cnn(
@@ -200,7 +212,7 @@ def unit_channel_shaping(game_state, my_unit_id, input_arr):
     np.put(input_arr[0], np.ravel_multi_index(np.array(coords).T, shape), input_values)
     return input_arr
 
-def get_model(env, path=".", policy=None):
+def get_model(env, alg_opt, path="."):
     model = None
     steps_learnt = 0
     try:
@@ -211,26 +223,21 @@ def get_model(env, path=".", policy=None):
             holder.sort_values("steps", inplace=True)
             last_model = holder.iloc[-1][0]
             steps_learnt = holder.iloc[-1]["steps"]
-            if policy is not None:
-                model = PPO.load(f"{path}/{last_model}", env=env, policy=CustomCNN)
-            else:
-                model = PPO.load(f"{path}/{last_model}", env=env)
-            #model.set_env(env)
+            model = alg_opt.load(f"{path}/{last_model}", env=env, policy=CustomCNN)
             print(f"loaded {last_model}")
     except Exception as e:
         raise e
     return model, steps_learnt
 
-def learning(model, learn_step=2000, steps_learnt=0, iterations=10, path="."):
+def learning(model, model_name, learn_step=2000, steps_learnt=0, iterations=10, path="."):
     for i in range(iterations):
         steps_learnt += learn_step
         last_timestamp = int(time.time())
-        last_name = f"bomberboi-{steps_learnt}-{last_timestamp}"
+        last_name = f"{model_name}-{steps_learnt}-{last_timestamp}"
 
-        model.learn(total_timesteps=learn_step, reset_num_timesteps=False, tb_log_name="tb_log-go_mid_reward")
+        model.learn(total_timesteps=learn_step, reset_num_timesteps=False, tb_log_name=f"tb_log-{model_name}")
         model.save(f"{path}/{last_name}")
 
-        print(f"bomberboi-{steps_learnt}-{last_timestamp}")
     return model, steps_learnt
 
 def testing(env, model, n_of_games=10, agent_id="a"):
@@ -274,29 +281,45 @@ def main():
     task = loop.create_task(gym.connect())
     loop.run_until_complete(task)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--policy", nargs=1, required=False)
-    parser.add_argument("-e", "--epochs", nargs=1, required=False, type=int)
-    parser.add_argument("-g", "--games_to_test", nargs=1, required=False, type=int)
-    parser.add_argument("-s", "--save_interval", nargs=1, required=False, type=int)
-    parser.add_argument("-i", "--iterations_of_learning", nargs=1, required=False, type=int)
-    parser.add_argument("-n", "--name_of_experiment", nargs=1, required=False)
-    parser.add_argument("-a", "--arena_name", nargs=1, required=False)
-    args = vars(parser.parse_args())
+    #None = randomly generated
+    CURRENT_ARENA = None
 
-    CURRENT_ARENA = arena_templates.get(args.get("arena_name"))
+    env = gym.make("bomberland-open-ai-gym", CURRENT_ARENA)
 
-    env = gym.make("bomberland-open-ai-gym", None)
+    cnn_opt = 1
+    alg_opt = PPO
+    alg_str = "ppo"
+    name = ""
+
+    if os.path.exists("info.txt"):
+        with open("info.txt", "r") as f:
+            holder = f.read().split("\n")
+            cnn_opt, alg_str = holder[:2]
+            if alg_str == "a2c":
+                alg_opt = A2C
+            elif alg_str == "ppo":
+                alg_opt = PPO
+            else:
+                alg_str = "ppo"
+                alg_opt = PPO
+            cnn_opt = int(cnn_opt)
+            if len(holder) == 3:
+                name = holder[2]
+    
+    print(f"alg_str: {alg_str}------------------cnn_opt: {cnn_opt}")
+
 
     policy_kwargs = dict(
         features_extractor_class=CustomCNN,
-        #features_extractor_kwargs=dict(features_dim=128),
+        features_extractor_kwargs=dict(features_dim=32),
     )
 
     #get model
     model = None
     steps_learnt = 0
-    model_name = "cnn_4"
+    if name != "":
+        name = "_"+str(name)
+    model_name = f"{alg_str}_cnn_{cnn_opt}{name}"
     model_dir = f"models/{model_name}"
     log_dir = f"logs/{model_name}"
 
@@ -305,12 +328,13 @@ def main():
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
-    model, steps_learnt = get_model(env, model_dir)
+    model, steps_learnt = get_model(env, alg_opt, model_dir)
 
     if model is None:
-        model = PPO("CnnPolicy", env, verbose=1, tensorboard_log=log_dir, policy_kwargs=policy_kwargs)
+        model = alg_opt("CnnPolicy", env, verbose=1, tensorboard_log=log_dir, policy_kwargs=policy_kwargs)
         print("creating new model")
         steps_learnt = 0
+
 
     ITERATIONS = 10
     LEARN_STEP = 10000
@@ -322,7 +346,7 @@ def main():
 
     for i in range(EPOCHS):
         #learning
-        model, steps_learnt = learning(model, LEARN_STEP, steps_learnt, ITERATIONS, model_dir)
+        model, steps_learnt = learning(model, model_name, LEARN_STEP, steps_learnt, ITERATIONS, model_dir)
         print(f"finished learning after {steps_learnt} steps")
         
         #testing
@@ -340,7 +364,7 @@ def main():
     loop = asyncio.get_event_loop()
     task = loop.create_task(gym.close())
     loop.run_until_complete(task)
-        
+
 
 if __name__ == "__main__":
     main()

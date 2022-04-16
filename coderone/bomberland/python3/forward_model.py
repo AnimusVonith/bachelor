@@ -1,6 +1,8 @@
 from typing import Dict, List
 import websockets
 import json
+import time
+import os
 
 
 class ForwardModel:
@@ -34,6 +36,7 @@ class ForwardModel:
 
     async def _on_data(self, data):
         data_type = data.get("type")
+        #print(f"we in _on_data with {data_type}")
 
         if data_type == "info":
             # no operation
@@ -46,6 +49,10 @@ class ForwardModel:
             return
         elif data_type == "endgame_state":
             self.endgame_packet = data
+            if not os.path.exists("replays"):
+                os.makedirs("replays")
+            with open(f"replays/replay-{int(time.time())}.txt") as f:
+                f.write(json.dumps(self.endgame_packet, indent=4), "w")
         else:
             print(f"unknown packet \"{data_type}\": {data}")
 

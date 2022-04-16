@@ -14,7 +14,6 @@ import time
 
 import websockets
 from forward_model import ForwardModel
-from asgiref.sync import async_to_sync
 
 
 json_action_format = {
@@ -42,6 +41,19 @@ json_action_format = {
     "unit_id": {"type": "string"}
 }
 
+
+def show_state(game_state):
+    current = pd.DataFrame(np.full((15,15), " "))
+    for unit in game_state["unit_state"]:
+        unit = game_state["unit_state"][unit]
+        x, y = unit["coordinates"]
+        current[x][y] = unit["unit_id"] 
+    for entity in game_state["entities"]:
+        current[entity["x"]][entity["y"]] = entity["type"]
+    print(current)
+    return current
+
+
 def get_shaped(game_state, my_agent_id=None, my_unit_id=None):
 
     if my_agent_id is None:
@@ -57,7 +69,7 @@ def get_shaped(game_state, my_agent_id=None, my_unit_id=None):
     my_units = dfh[dfh["agent_id"]==my_agent_id]["unit_id"]
     enemy_units = dfh[dfh["agent_id"]!=my_agent_id]["unit_id"]
 
-    input_shape = (19,15,15)
+    input_shape = (22,15,15)
     input_arr = np.zeros(input_shape, dtype=np.uint8)
     shape = input_arr[0].shape
 
@@ -99,7 +111,6 @@ def get_shaped(game_state, my_agent_id=None, my_unit_id=None):
     np.put(input_arr[11], np.ravel_multi_index(np.array(mh[["x", "y"]]).T, shape), 1)   #metal
     np.put(input_arr[18], np.ravel_multi_index(np.array(ex[["x", "y"]]).T, shape), 1)   #fire
 
-    
     df = pd.DataFrame.from_dict(game_state["unit_state"]).T
     dfhh = df.copy()
     dfhh["bombs"] = [dfhh["inventory"][unit_id]["bombs"] for unit_id in dfhh["unit_id"].to_list()]
@@ -122,7 +133,7 @@ def get_shaped(game_state, my_agent_id=None, my_unit_id=None):
     if not dead_units.empty:
         np.put(input_arr[9], np.ravel_multi_index(np.array(dead_units["coordinates"].to_list()).T, shape), 1)
 
-    return input_arr.reshape(19,15,15)
+    return input_arr.reshape(22,15,15)
     
 
 def get_random_coords(current, sign):
@@ -145,7 +156,7 @@ def generate_random_env():
             "b": {"agent_id": "b","unit_ids": ["d","f","h"]}},
         "unit_state": {
             #"c": {"coordinates": [2,3],"hp": 1,"inventory": {"bombs": 3},"blast_diameter": 3,"unit_id": "c","agent_id": "a","invulnerability": 0},
-            "d": {"coordinates": [7,7],"hp": 1,"inventory": {"bombs": 3},"blast_diameter": 3,"unit_id": "d","agent_id": "b","invulnerability": 0}
+            #"d": {"coordinates": [7,7],"hp": 1,"inventory": {"bombs": 3},"blast_diameter": 3,"unit_id": "d","agent_id": "b","invulnerability": 0}
         },
         "entities": [
             #{"created": 0,"x": 6,"y": 7,"type": "m"},
@@ -162,11 +173,11 @@ def generate_random_env():
     HEIGHT = holder["world"]["height"]
 
     current = np.full((WIDTH,HEIGHT), " ")
-    current[7][7] = "d"
+    #current[7][7] = "d"
 
-    N_wood = 10
-    N_metal = 5
-    N_ore = 5
+    N_wood = 20
+    N_metal = 8
+    N_ore = 8
 
     #create units
     unit_state_holder = {
@@ -217,7 +228,16 @@ class GymEnv(gym.Env):
             initial_state = generate_random_env()
 
         self._state = initial_state
+        self.position_advantage = self.get_pos_score()
+
         self.shaped_state = get_shaped(self._state)
+        holder = np.zeros((15,15))
+        holder[::] = np.array(range(holder.shape[0]))
+        self.x_pos_arr = holder.copy()
+        self.y_pos_arr = holder.T.copy()
+        self.shaped_state[19] = self.position_advantage
+        self.shaped_state[20] = self.x_pos_arr
+        self.shaped_state[21] = self.y_pos_arr
 
         self._fwd = fwd_model
         self._channel = channel
@@ -227,20 +247,20 @@ class GymEnv(gym.Env):
         
         self.actions = ["right", "left", "up", "down", "bomb", "detonate-1", "detonate-2", "detonate-3", "noop"]
         self.total_actions = []
-        
+        self.last_action = "noop"
+        self.fail_move = False
+
         self.action_space = spaces.Discrete(len(self.actions))
-        self.observation_space = spaces.Box(low=0, high=254, shape=(19,15,15), dtype=np.uint8)
+        self.observation_space = spaces.Box(low=0, high=254, shape=(22,15,15), dtype=np.uint8)
 
         self.metadata = {"render.modes": ["human"]}
-        self.last_reward = 0
+        self.last_reward = None
         self.current_reward = 0
 
         self.MIN_REWARD = -10000
         self.MAX_REWARD = 10000
 
         self.reward_range = (self.MIN_REWARD, self.MAX_REWARD)
-
-        self.position_advantage = self.get_pos_score()
 
         self.done = False
         self.info = {"state":self._state, "events":{}}
@@ -275,7 +295,7 @@ class GymEnv(gym.Env):
     async def get_actions(self, actions=None, agent_id=None, unit_id=None):
         directions = ["right", "left", "up", "down"]
 
-        enemy_actions = ["right", "left", "up", "down", "noop"]
+        enemy_actions = ["right", "left", "up", "down", "noop", "noop", "noop", "noop", "noop", "noop"]
 
         if isinstance(actions,(int,np.int64)) and actions < len(self.actions):
             actions = self.actions[actions]
@@ -293,6 +313,8 @@ class GymEnv(gym.Env):
                 agent_id = "a"
             if unit_id is None:
                 unit_id = "c"
+
+        holder = actions
         actions = []
 
         d_action = d_action.split("-")
@@ -301,22 +323,41 @@ class GymEnv(gym.Env):
         if u_action in directions:
             action = {"action": {"type":"move", "unit_id": unit_id, "move": u_action}, "agent_id": agent_id}
             actions.append(action)
+            if unit_id == "c":
+                self.last_action = holder
         elif u_action == "bomb":
-            action = {"action": {"type": "bomb", "unit_id": unit_id}, "agent_id": agent_id}
-            actions.append(action)
+            if (self._state["unit_state"][unit_id]["inventory"]["bombs"] >= 1) and (self.last_action != "bomb"):
+                action = {"action": {"type": "bomb", "unit_id": unit_id}, "agent_id": agent_id}
+                actions.append(action)
+                if unit_id == "c":
+                    self.last_action = "bomb"
+            elif unit_id == "c":
+                self.last_action = "fail"
+                print("fail bomb")
         elif u_action == "detonate":
             bomb_coords = self.get_bombs_coords(unit_id)
             if (bomb_coords is not None):
                 if type(bomb_coords[0]) is list:
                     d_action[1] = int(d_action[1])
+
+                    #if there are less bombs than requested, fail, else return bomb coordinates of the selected bomb (-1, -2, -3) from end
+                    #selected from the end as to "last placed" to "first placed" so most recent bomb is always -1, etc.
                     if len(bomb_coords) >= d_action[1]:
                         bomb_coords = bomb_coords[-d_action[1]]
                     else:
+                        if unit_id == "c":
+                            self.last_action = "fail detonate"
                         return actions
                 action = {"action": {"type": "detonate", "unit_id": unit_id, "coordinates": bomb_coords}, "agent_id": agent_id}
                 actions.append(action)
+                if unit_id == "c":
+                    self.last_action = "detonate"
+            elif unit_id == "c":
+                self.last_action = "fail"
+                print("fail detonate")
+        elif unit_id == "c":
+            self.last_action = "noop"
         return actions
-
 
     def calculate_reward(self, agent_id=None, unit_id=None):
         current_tick = self._state["tick"]
@@ -347,40 +388,50 @@ class GymEnv(gym.Env):
         
         position_reward = self.position_advantage[posy][posx]
 
+        if self.last_reward is None:
+            self.last_reward = ((sum_my_hp - sum_enemy_hp)*100)
+
         if not self.done:
-            to_return = ((sum_my_hp - sum_enemy_hp)*10) - self.last_reward #((sum_my_hp - sum_enemy_hp)*10) + position_reward 
-            self.last_reward = ((sum_my_hp - sum_enemy_hp)*10) #((sum_my_hp - sum_enemy_hp)*10) + position_reward 
-            return to_return #if i dont lose hp +10, if i lose hp -10
-        
+            to_return = ((sum_my_hp - sum_enemy_hp)*100) - self.last_reward + position_reward 
+            self.last_reward = ((sum_my_hp - sum_enemy_hp)*100)
+
+            if to_return == position_reward:
+                if self.last_action == "bomb": # or self.last_action == "detonate"
+                    to_return += 10
+                elif self.last_action == "fail":
+                    to_return -= 25
+            return to_return
+
         if n_my_units > 0 and n_enemy_units == 0: #i win
             print("i win")
-            reward_now = (100*n_my_units + 10*sum_my_hp)*(self.GAME_LEN/current_tick)
+            reward_now = (1000*n_my_units + 100*sum_my_hp)*(self.GAME_LEN/(current_tick+1))
             return min(reward_now, self.MAX_REWARD)
         elif n_my_units == 0 and n_enemy_units > 0: #enemy win
             print("i lose")
-            reward_now = -(100*n_enemy_units + 10*sum_enemy_hp)*(self.GAME_LEN/current_tick)
+            reward_now = -(1000*n_enemy_units + 100*sum_enemy_hp)*(self.GAME_LEN/(current_tick+1))
             return max(reward_now, self.MIN_REWARD)
         print("i draw")
-        return -100 #0 #draw
+        return 0 #draw
 
 
-    async def async_reset(self):
+    async def async_reset(self, get_rand_coords=False):
         print("Resetting")
 
         if self._initial_state is None:
             print("none in reset")
             self._state = generate_random_env()
-
-        new_coords = [random.randint(0,14),random.randint(0,14)]
-
-        while new_coords[0] == 7 or new_coords[1] == 7:
+        elif get_rand_coords:
             new_coords = [random.randint(0,14),random.randint(0,14)]
+            self._state["unit_state"]["c"]["coordinates"] = new_coords
 
-        self._state["unit_state"]["c"]["coordinates"] = new_coords
         self.info["state"] = self._state
         self.info["events"] = {}
         self.shaped_state = get_shaped(self._state)
-        self.last_reward = 0
+        self.shaped_state[19] = self.position_advantage
+        self.shaped_state[20] = self.x_pos_arr
+        self.shaped_state[21] = self.y_pos_arr
+        self.last_action = "noop"
+        self.last_reward = None
         return self.shaped_state
 
     async def await_reset(self):
@@ -397,7 +448,11 @@ class GymEnv(gym.Env):
 
     async def async_step(self, actions, get_enemy_actions=True):
 
+        #print(pd.DataFrame(self._state["unit_state"]).T)
+
         all_actions = []
+
+        #print(actions)
 
         if (type(actions) is list) and (type(actions[0]) is list):
             for action in actions:
@@ -405,16 +460,27 @@ class GymEnv(gym.Env):
         else:
             all_actions += await self.get_actions(actions)
 
+        #print(f"""old:{self._state["unit_state"]["c"]["coordinates"]}""")
+
         if get_enemy_actions:
             for enemy_unit in self._state["agents"]["b"]["unit_ids"]:
                 if self._state["unit_state"][enemy_unit]["hp"] > 0 and self._state["unit_state"][enemy_unit]["coordinates"] != [7,7]:
-                    all_actions += await self.get_actions(None, enemy_unit, "b")
+                    all_actions += await self.get_actions(None, "b", enemy_unit)
+
+        print(all_actions)
 
         state = await self._send(self._state, all_actions, self._channel)
         self._state = state.get("next_state")
-        #render
+        
+        #show_state(self._state)
+        #print(f"""new:{self._state["unit_state"]["c"]["coordinates"]}""")
+
         self.shaped_state = get_shaped(state.get("next_state"))
-        self.done = state.get("is_complete")
+        self.shaped_state[19] = self.position_advantage
+        self.shaped_state[20] = self.x_pos_arr
+        self.shaped_state[21] = self.y_pos_arr
+        #self.done = state.get("is_complete")
+        self.done = self._state["unit_state"]["c"]["hp"] < 1
         self.info["events"] = state.get("tick_result").get("events")
         self.info["state"] = self._state
 
@@ -425,7 +491,7 @@ class GymEnv(gym.Env):
 
 
     def step(self, actions):
-        if type(actions) is int:
+        if isinstance(actions,(int,np.int64)) and actions < len(self.actions):
             self.total_actions.append(self.actions[actions])
         else:
             self.total_actions.append(actions)
@@ -447,8 +513,6 @@ class GymEnv(gym.Env):
 
     def render(self, mode="human", close=False):
         render_array = np.full((self.shape)," ")
-
-
 
 
 class Gym():

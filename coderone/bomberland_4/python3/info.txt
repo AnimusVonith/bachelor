@@ -1,0 +1,3 @@
+4
+a2c
+pos_bomb_det_reward

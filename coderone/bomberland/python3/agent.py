@@ -60,13 +60,11 @@ class Agent():
             if game_state["unit_state"][unit_id]["hp"] < 1:
                 continue
 
+            action = self.model.predict(self.obs)
+
+            if isinstance(action,(int,np.int64)) and action < len(actions):
+                action = actions[action]
             
-            action = self.model.predict(self.obs)
-
-            action = self.model.predict(self.obs)
-
-            action = self.model.predict(self.obs)
-
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)
             elif action == "bomb":

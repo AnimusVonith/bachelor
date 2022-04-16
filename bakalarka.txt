@@ -1,0 +1,9 @@
+bakalarka ciele
+- skumat prostredie
+- zaklady RL
+- pozriet prednasky
+- pokusy na danom prostredi 
+- https://www.pommerman.com/about
+
+
+-https://www.researchgate.net/publication/337109176_Learning_How_to_Play_Bomberman_with_Deep_Reinforcement_and_Imitation_Learning
