@@ -1,0 +1,7 @@
+ppo_cnn_3_simple_reward
+win/lose
+total_score:[75, 35]
+current_winrate:68.18%
+this_score:[9, 1]
+actions_counter:[9135 8338   21   14    0   13   21   22    0]
+['right', 'left', 'up', 'down', 'bomb', 'detonate-1', 'detonate-2', 'detonate-3', 'noop']

@@ -1,0 +1,10 @@
+a2c_cnn_4_fast_learner_v2_new_shapes
+win/draw/lose
+total_score:[2, 0, 58]
+current_winrate:3.3333333333333335%
+this_score:[0, 0, 10]
+avg_per_step:[-4.4816862004807625, -32.234340578421765, -508.8529945104423, -752.7554335348325, -996.6578725592227, -95.45100496342414, -1293.8634936220558, -1537.7659326464461, -1781.6683716708362, -2025.5708106952263]
+this_avg:-8304
+best_avg:-6242
+actions_counter:[    0     0     0     0 16332     0     0     0     0]
+['right', 'left', 'up', 'down', 'bomb', 'detonate-1', 'detonate-2', 'detonate-3', 'noop']

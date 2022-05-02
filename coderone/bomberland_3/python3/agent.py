@@ -3,27 +3,26 @@ from game_state import GameState
 import asyncio
 import random
 import os
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, A2C
 import pandas as pd
+import numpy as np
+
+from model_funcs import load_model
+from shaping_funcs import get_shaped, get_pos_score, unit_channel_shaping
+from misc_funcs import get_bomb_coords
 
 uri = os.environ.get(
     'GAME_CONNECTION_STRING') or "ws://127.0.0.1:3000/?role=agent&agentId=agentId&name=defaultName"
 
-actions = ["up", "down", "left", "right", "bomb", "detonate"]
+
+actions = ["up", "down", "left", "right", "bomb", "detonate-1", "detonate-2", "detonate-3" "noop"]
 
 
 class Agent():
     def __init__(self):
         self._client = GameState(uri)
 
-        holder = pd.DataFrame(os.listdir("models/stand_still"))
-        holder[["n", "steps", "time"]] = holder[0].str.split("-", expand=True)
-        holder["steps"] = holder["steps"].astype("int64")
-        holder.sort_values("steps", inplace=True)
-        last_model = holder.iloc[-1][0]
-        steps_learnt = holder.iloc[-1]["steps"]
-        self.model = PPO.load(f"models/stand_still/{last_model}")
-        print(f"loaded models/stand_still/{last_model}")
+        self.model, self.steps_learnt = load_model()
         
         self._client.set_game_tick_callback(self._on_game_tick)
 
@@ -52,28 +51,26 @@ class Agent():
         my_agent_id = game_state.get("connection").get("agent_id")
         my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")
 
+        shaped_state = get_shaped(game_state, my_agent_id)
+
         # send each unit a random action
         for unit_id in my_units:
-
-            actions = ["up", "down", "left", "right", "bomb", "detonate-1", "detonate-2", "detonate-3" "noop"]
 
             if game_state["unit_state"][unit_id]["hp"] < 1:
                 continue
 
-            
-            action = self.model.predict(self.obs)
+            shaped_state = unit_channel_shaping(game_state, unit_id, shaped_state)
 
-            action = self.model.predict(self.obs)
-
-            action = self.model.predict(self.obs)
+            action = self.model.predict(shaped_state)
 
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)
             elif action == "bomb":
                 await self._client.send_bomb(unit_id)
-            elif action == "detonate":
-                bomb_coordinates = self._get_bomb_to_detonate(unit_id)
-                if bomb_coordinates != None:
+            elif action[:8] == "detonate":
+                bomb_coordinates = self.get_bomb_coords(game_state, unit_id)
+                if bomb_coordinates is not None:
+                    if len(bomb_coordinates)
                     x, y = bomb_coordinates
                     await self._client.send_detonate(x, y, unit_id)
             else:

@@ -1,0 +1,10 @@
+a2c_cnn_3_fast_learner_v2_new_shapes
+win/draw/lose
+total_score:[24, 0, 36]
+current_winrate:40.0%
+this_score:[5, 0, 5]
+avg_per_step:[3.619373519347197, 8.621994245149057, 3.9014934175179103, 1.456101928902173, 10.34753093799363, 5.174663709761621, 3.3148899655969393, 1.0241347948074362, 15.919119022246724, 30.6338685533346]
+this_avg:1127
+best_avg:1696
+actions_counter:[    0     0     0     0     0     0     0     0 89487]
+['right', 'left', 'up', 'down', 'bomb', 'detonate-1', 'detonate-2', 'detonate-3', 'noop']

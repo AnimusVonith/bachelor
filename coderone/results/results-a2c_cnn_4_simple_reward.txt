@@ -1,0 +1,7 @@
+a2c_cnn_4_simple_reward
+win/lose
+total_score:[75, 35]
+current_winrate:68.18%
+this_score:[8, 2]
+actions_counter:[  18   23 6337 6167    0    0    0    0    0]
+['right', 'left', 'up', 'down', 'bomb', 'detonate-1', 'detonate-2', 'detonate-3', 'noop']

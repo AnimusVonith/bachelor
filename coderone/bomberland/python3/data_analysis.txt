@@ -162,3 +162,31 @@ config
 
 connection
 {'id': 2, 'role': 'agent', 'agent_id': 'a'}
+
+
+
+
+json_action_format = {
+    "move": {
+        "enum": [
+            "down",
+            "left",
+            "right",
+            "up"
+        ],"type": "string"},
+    "type": {
+        "enum": ["move"],"type": "string"},
+    "unit_id": {"type": "string"},
+
+    "type": {
+        "enum": ["bomb"],"type": "string"},
+    "unit_id": {"type": "string"},
+
+    "coordinates": {
+        "items": [
+            {"type": "number"},
+            {"type": "number"}
+        ],"maxItems": 2,"minItems": 2,"type": "array"},
+    "type": {"enum": ["detonate"],"type": "string"},
+    "unit_id": {"type": "string"}
+}

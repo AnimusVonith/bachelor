@@ -1,3 +1,3 @@
 3
 a2c
-pos_bomb_det_reward
+simple_reward_faster_learning

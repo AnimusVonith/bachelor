@@ -1,0 +1,10 @@
+ppo_cnn_4_fast_learner_v2_new_shapes
+win/draw/lose
+total_score:[16, 0, 34]
+current_winrate:32.0%
+this_score:[3, 0, 7]
+avg_per_step:[-2.0673971469919374, -3.786507781830331, 7.438555336221291, 20.824934124687633, 11.037252625575379, 9.11267216856356, 5.300388889162843, 3.0115702414812064, 12.9169856533948, 7.367528614377677]
+this_avg:453
+best_avg:1936
+actions_counter:[    0     0     0     0     0     0 71080     0     0]
+['right', 'left', 'up', 'down', 'bomb', 'detonate-1', 'detonate-2', 'detonate-3', 'noop']

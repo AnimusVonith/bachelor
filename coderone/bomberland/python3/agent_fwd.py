@@ -83,10 +83,6 @@ class Agent():
         # print(state)
         pass
 
-    def generate_random_action(self):
-        actions_length = len(actions)
-        return actions[random.randint(0, actions_length - 1)]
-
 
 def main():
     Agent()
