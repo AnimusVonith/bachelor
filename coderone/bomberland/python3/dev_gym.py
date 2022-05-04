@@ -137,4 +137,6 @@ def main():
 
 
 if __name__ == "__main__":
+    print(sys.argv)
+    exit(0)
     main()

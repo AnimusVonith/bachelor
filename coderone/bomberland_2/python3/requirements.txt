@@ -1,9 +1,0 @@
-asyncio==3.4.3
-websockets==10.1
-pandas
-numpy
-stable_baselines3
-torch
-gym
-asgiref
-tensorboard

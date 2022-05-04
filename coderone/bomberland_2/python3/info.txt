@@ -1,3 +1,0 @@
-4
-ppo
-simple_reward_faster_learning
