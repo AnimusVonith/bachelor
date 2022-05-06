@@ -100,12 +100,12 @@ def main():
     ITERATIONS = 10
     LEARN_STEP = 10000
     N_OF_GAMES = 10
-    EPOCHS = 1000
+    TRAINING_LOOPS = 1000
 
     final_score = [0,0,0]
     best_avg = -100000
 
-    for i in range(EPOCHS):
+    for i in range(TRAINING_LOOPS):
         #learning
         model, steps_learnt = learning(model, model_name, LEARN_STEP, steps_learnt, ITERATIONS, model_dir)
         print(f"finished learning after {steps_learnt} steps")
