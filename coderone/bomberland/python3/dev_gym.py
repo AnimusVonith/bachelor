@@ -20,6 +20,7 @@ from arena_templates import get_arena_templates
 fwd_model_uri = os.environ.get(
     "FWD_MODEL_CONNECTION_STRING") or "ws://127.0.0.1:6969/?role=admin"
 
+#initialize learning loop with set values and save model after each iteration, gaps between saves is set by learn_step
 def learning(model, model_name, learn_step=2000, steps_learnt=0, iterations=10, path="."):
     for i in range(iterations):
         steps_learnt += learn_step
@@ -31,17 +32,16 @@ def learning(model, model_name, learn_step=2000, steps_learnt=0, iterations=10, 
 
     return model, steps_learnt
 
+#initialize testing loop with set values
 def testing(env, model, n_of_games=10, actions_counter=None, agent_id="a"):
-
     rewards = 0
     score = [0,0,0]
     i = 0
-
     obs = env.reset()
-
     avg_rewards = []
     steps = 0
 
+    #standard game loop
     while i < n_of_games:
         state = env.get_state()
         actions = []
@@ -49,6 +49,7 @@ def testing(env, model, n_of_games=10, actions_counter=None, agent_id="a"):
         alive_units = alive_units[alive_units["agent_id"]==agent_id]
         alive_units = alive_units[alive_units["hp"] > 0]
         alive_units = alive_units["unit_id"].to_list()
+        #generate obs for each alive units from my agent, save prediction from their policy and then send to env.step
         for unit in alive_units:
             unit_channel_shaping(state, unit, obs)
             action, _states = model.predict(obs)
@@ -59,6 +60,7 @@ def testing(env, model, n_of_games=10, actions_counter=None, agent_id="a"):
             actions.append([action, agent_id, unit])
         obs, reward, done, info = env.step(actions, False)
         
+        #if game ended save some statistics
         if done:
             steps = state["tick"]
             rewards += reward
@@ -72,15 +74,15 @@ def testing(env, model, n_of_games=10, actions_counter=None, agent_id="a"):
             else:
                 score[1]+=1
 
-            print(info)
+            #print(info)
             print(reward, rewards)
             obs = env.reset()
     return rewards, score, actions_counter, avg_rewards
 
 def main():
 
+    #initialize gym connection to game server
     gym = Gym(fwd_model_uri)
-
     loop = asyncio.get_event_loop()
     task = loop.create_task(gym.connect())
     loop.run_until_complete(task)
@@ -89,19 +91,19 @@ def main():
     CURRENT_ARENA = None
     #CURRENT_ARENA = get_arena_templates()
 
+    #initialize counter and gym env with set arena, if arena = none, randomly generated arena will be created
     actions_counter = np.zeros(9, np.uint32)
-
     env = gym.make("bomberland-open-ai-gym", CURRENT_ARENA)
 
+    #get agent model, if no model is found and loaded, it will create a new one
     model, steps_learnt, model_name, model_dir = load_model(env)
-
     env.set_model_name(model_name)
 
+    #some constant values for main loop
     ITERATIONS = 10
     LEARN_STEP = 10000
     N_OF_GAMES = 10
     TRAINING_LOOPS = 1000
-
     final_score = [0,0,0]
     best_avg = -100000
 
@@ -111,11 +113,10 @@ def main():
         print(f"finished learning after {steps_learnt} steps")
         
         #testing
-        if i == 10:
+        if i == 10: #every 10th iteration do a 100 game test
             N_OF_GAMES = 100
         else:
             N_OF_GAMES = 10
-            
         rewards, score, actions_counter, avg_rewards = testing(env, model, N_OF_GAMES, actions_counter)
         final_score[0] += score[0]
         final_score[1] += score[1]
@@ -126,6 +127,7 @@ def main():
         print(f"finished testing with score: {score} and final reward: {rewards} in {N_OF_GAMES} games.")
         print(f"final score: {final_score}\nthis average: {avg}\nbest average: {best_avg}")
 
+        #save results
         if not os.path.exists("result_logs"):
             os.makedirs("result_logs")
         with open(f"result_logs/results-{model_name}.txt", "w") as f:
@@ -137,6 +139,4 @@ def main():
 
 
 if __name__ == "__main__":
-    print(sys.argv)
-    exit(0)
     main()

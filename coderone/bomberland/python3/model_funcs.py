@@ -4,7 +4,7 @@ from stable_baselines3 import PPO, A2C
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import os
 
-
+#try to load saved model from said directory
 def get_model(alg_opt, path=".\\models", env=None):
     model = None
     steps_learnt = 0
@@ -24,12 +24,14 @@ def get_model(alg_opt, path=".\\models", env=None):
         raise e
     return model, steps_learnt
 
+#if model is still none after trying to load saved model, create new one with set specification
 def load_model(env = None):
     cnn_opt = 1
     alg_opt = PPO
     alg_str = "ppo"
     name = ""
 
+    #get settings from file, sadly couldnt find a better way to send arguments through docker compose up
     if os.path.exists("info.txt"):
         with open("info.txt", "r") as f:
             holder = f.read().split("\n")
@@ -47,7 +49,7 @@ def load_model(env = None):
     
     print(f"alg_str: {alg_str}------------------cnn_opt: {cnn_opt}")
 
-
+    #get custom extractor neural network
     policy_kwargs = dict(
         features_extractor_class=CustomCNN,
         features_extractor_kwargs=dict(features_dim=32),
@@ -70,7 +72,7 @@ def load_model(env = None):
     model, steps_learnt = get_model(alg_opt, model_dir, env)
 
     """
-    until simple_reward
+    until simple_reward model creation
     if model is None and env is not None:
         model = alg_opt("CnnPolicy", env, verbose=1, tensorboard_log=log_dir, learning_rate=0.00005, policy_kwargs=policy_kwargs)
         print("creating new model")
