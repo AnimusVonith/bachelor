@@ -1,3 +1,7 @@
+# Jakub Adamčiak
+# Bakalárska práca
+# Posilňované učenie na hre Bomberman
+
 import asyncio
 import json
 from typing import Callable, Dict, List

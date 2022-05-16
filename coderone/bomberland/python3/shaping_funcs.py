@@ -182,7 +182,7 @@ def get_shaped(game_state, my_agent_id=None, my_unit_id=None):
     if not dead_units.empty:
         np.put(input_arr[9], np.ravel_multi_index(np.array(dead_units["coordinates"].to_list()).T, shape), 1*254)
 
-    #from simple reward faster learning
+    #from simple reward faster learning (newest iterations)
     input_arr[:19] = np.transpose(input_arr[:19], (0,2,1))
 
     return input_arr.reshape(input_shape)

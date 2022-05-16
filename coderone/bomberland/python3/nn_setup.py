@@ -34,44 +34,44 @@ class CustomCNN(BaseFeaturesExtractor):
         #OUTPUT = 15
 
         self.nn_options = {
-        1: nn.Sequential(
-            nn.Conv2d(n_input_channels, 16, kernel_size=3, padding=1, stride=1), 
-            nn.ReLU(),
-            nn.Conv2d(16, 16, kernel_size=3, padding=1, stride=1),
-            nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=1),
-            nn.ReLU(),
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten()),
+            1: nn.Sequential(
+                nn.Conv2d(n_input_channels, 16, kernel_size=3, padding=1, stride=1), 
+                nn.ReLU(),
+                nn.Conv2d(16, 16, kernel_size=3, padding=1, stride=1),
+                nn.ReLU(),
+                nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=1),
+                nn.ReLU(),
+                nn.AdaptiveAvgPool2d(1),
+                nn.Flatten()),
 
-        2: nn.Sequential(
-            nn.Conv2d(n_input_channels, 16, kernel_size=3, padding=1, stride=1), 
-            nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(32, 32, kernel_size=3, padding=1, stride=1),
-            nn.ReLU(),
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten()),
+            2: nn.Sequential(
+                nn.Conv2d(n_input_channels, 16, kernel_size=3, padding=1, stride=1), 
+                nn.ReLU(),
+                nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=2),
+                nn.ReLU(),
+                nn.Conv2d(32, 32, kernel_size=3, padding=1, stride=1),
+                nn.ReLU(),
+                nn.AdaptiveAvgPool2d(1),
+                nn.Flatten()),
 
-        3: nn.Sequential(
-            nn.Conv2d(n_input_channels, 16, kernel_size=3, padding=1, stride=1), 
-            nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, padding=1, stride=2),
-            nn.ReLU(),
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten()),
+            3: nn.Sequential(
+                nn.Conv2d(n_input_channels, 16, kernel_size=3, padding=1, stride=1), 
+                nn.ReLU(),
+                nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=2),
+                nn.ReLU(),
+                nn.Conv2d(32, 64, kernel_size=3, padding=1, stride=2),
+                nn.ReLU(),
+                nn.AdaptiveAvgPool2d(1),
+                nn.Flatten()),
 
-        4: nn.Sequential(
-            nn.Conv2d(n_input_channels, 16, kernel_size=3, padding=1, stride=1), 
-            nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, padding=1, stride=2),
-            nn.ReLU(),
-            nn.Flatten()),
+            4: nn.Sequential(
+                nn.Conv2d(n_input_channels, 16, kernel_size=3, padding=1, stride=1), 
+                nn.ReLU(),
+                nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=2),
+                nn.ReLU(),
+                nn.Conv2d(32, 64, kernel_size=3, padding=1, stride=2),
+                nn.ReLU(),
+                nn.Flatten()),
         }
 
         self.cnn = self.nn_options[cnn_opt]

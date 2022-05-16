@@ -1,3 +1,7 @@
+# Jakub Adamčiak
+# Bakalárska práca
+# Posilňované učenie na hre Bomberman
+
 import asyncio
 from typing import Dict
 from gym_lib import Gym
@@ -100,31 +104,40 @@ def main():
     env.set_model_name(model_name)
 
     #some constant values for main loop
-    ITERATIONS = 10
-    LEARN_STEP = 10000
-    N_OF_GAMES = 10
-    TRAINING_LOOPS = 1000
+    settings = {"ITERATIONS": 10, "LEARN_STEP": 10000, "N_OF_GAMES": 10, "TRAINING_LOOPS": 1000}
+
+    if "settings.txt" in os.listdir():
+        with open("settings.txt", "r") as f:
+            x = f.read()
+        x = x.split("\n")[3:]
+        for y in x:
+            y = y.split(" = ")
+            if len(y) == 2 and y[1].isdigit():
+                settings[y[0]] = int(y[1])
+
+    print(settings)
+
     final_score = [0,0,0]
     best_avg = -100000
 
-    for i in range(TRAINING_LOOPS):
+    for i in range(settings["TRAINING_LOOPS"]):
         #learning
-        model, steps_learnt = learning(model, model_name, LEARN_STEP, steps_learnt, ITERATIONS, model_dir)
+        model, steps_learnt = learning(model, model_name, settings["LEARN_STEP"], steps_learnt, settings["ITERATIONS"], model_dir)
         print(f"finished learning after {steps_learnt} steps")
         
         #testing
         if i == 10: #every 10th iteration do a 100 game test
-            N_OF_GAMES = 100
+            settings["N_OF_GAMES"] = 100
         else:
-            N_OF_GAMES = 10
-        rewards, score, actions_counter, avg_rewards = testing(env, model, N_OF_GAMES, actions_counter)
+            settings["N_OF_GAMES"] = 10
+        rewards, score, actions_counter, avg_rewards = testing(env, model, settings["N_OF_GAMES"], actions_counter)
         final_score[0] += score[0]
         final_score[1] += score[1]
         final_score[2] += score[2]
-        avg = int(rewards/N_OF_GAMES)
+        avg = int(rewards/settings["N_OF_GAMES"])
         best_avg = max(avg, best_avg)
 
-        print(f"finished testing with score: {score} and final reward: {rewards} in {N_OF_GAMES} games.")
+        print(f"finished testing with score: {score} and final reward: {rewards} in {settings['N_OF_GAMES']} games.")
         print(f"final score: {final_score}\nthis average: {avg}\nbest average: {best_avg}")
 
         #save results
